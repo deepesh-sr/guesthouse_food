@@ -3,7 +3,7 @@
 import { ClipboardList, Minus, Plus, RefreshCw, ShieldCheck, ShoppingBag } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { todayIsoDate, formatMoney } from "@/lib/date";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, publicSupabase } from "@/lib/supabase";
 import type { CartLine, DailyMenuItem } from "@/lib/types";
 
 export function ResidentOrderApp() {
@@ -31,13 +31,13 @@ export function ResidentOrderApp() {
     setLoading(true);
     setError("");
 
-    if (!isSupabaseConfigured || !supabase) {
+    if (!isSupabaseConfigured || !publicSupabase) {
       setLoading(false);
-      setError("Supabase is not configured. Add your project URL and anon key to .env.local.");
+      setError("Supabase is not configured. Add your project URL and publishable key to .env.local.");
       return;
     }
 
-    const { data, error: menuError } = await supabase
+    const { data, error: menuError } = await publicSupabase
       .from("daily_menu_items")
       .select("*")
       .eq("menu_date", todayIsoDate())
@@ -71,7 +71,7 @@ export function ResidentOrderApp() {
     setError("");
     setSuccess("");
 
-    if (!supabase) {
+    if (!publicSupabase) {
       setError("Supabase is not configured yet.");
       return;
     }
@@ -89,7 +89,7 @@ export function ResidentOrderApp() {
     setSubmitting(true);
 
     const orderId = crypto.randomUUID();
-    const { error: orderError } = await supabase
+    const { error: orderError } = await publicSupabase
       .from("orders")
       .insert({
         id: orderId,
@@ -116,7 +116,7 @@ export function ResidentOrderApp() {
       line_total: line.item.price * line.quantity,
     }));
 
-    const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+    const { error: itemsError } = await publicSupabase.from("order_items").insert(orderItems);
 
     if (itemsError) {
       setError(itemsError.message);
@@ -268,7 +268,7 @@ export function ResidentOrderApp() {
               form?.requestSubmit();
             }}
           >
-            Submit
+            {submitting ? "Sending..." : "Submit"}
           </button>
         </div>
       </div>

@@ -61,7 +61,7 @@ create policy "Admins can manage menu"
 create policy "Residents can create orders"
   on public.orders
   for insert
-  to anon
+  to anon, authenticated
   with check (status = 'pending' and payment_status = 'unpaid');
 
 create policy "Admins can read orders"
@@ -80,7 +80,7 @@ create policy "Admins can update orders"
 create policy "Residents can create order items"
   on public.order_items
   for insert
-  to anon
+  to anon, authenticated
   with check (true);
 
 create policy "Admins can read order items"

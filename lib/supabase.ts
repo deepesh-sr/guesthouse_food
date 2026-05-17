@@ -10,3 +10,13 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKe
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabasePublishableKey!)
   : null;
+
+export const publicSupabase = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabasePublishableKey!, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    })
+  : null;

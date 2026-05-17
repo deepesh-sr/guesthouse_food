@@ -20,6 +20,11 @@ export function AdminDashboard() {
   const [orders, setOrders] = useState<GuestOrder[]>([]);
   const [menu, setMenu] = useState<DailyMenuItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [addingMenu, setAddingMenu] = useState(false);
+  const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [togglingMenuId, setTogglingMenuId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [filterDate, setFilterDate] = useState(todayIsoDate());
@@ -88,24 +93,30 @@ export function AdminDashboard() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSigningIn(true);
 
     if (!supabase) {
       setError("Supabase is not configured. Add .env.local values first.");
+      setSigningIn(false);
       return;
     }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setError(signInError.message);
+      setSigningIn(false);
       return;
     }
 
     setSignedIn(true);
+    setSigningIn(false);
   }
 
   async function signOut() {
+    setSigningOut(true);
     await supabase?.auth.signOut();
     setSignedIn(false);
+    setSigningOut(false);
   }
 
   async function updateOrder(
@@ -113,12 +124,16 @@ export function AdminDashboard() {
     values: Partial<Pick<GuestOrder, "status" | "payment_status" | "payment_mode" | "admin_note">>,
   ) {
     if (!supabase) return;
+    setSavingOrderId(orderId);
+    setError("");
     const { error: updateError } = await supabase.from("orders").update(values).eq("id", orderId);
     if (updateError) {
       setError(updateError.message);
+      setSavingOrderId(null);
       return;
     }
     await loadAdminData();
+    setSavingOrderId(null);
   }
 
   async function addMenuItem(event: FormEvent<HTMLFormElement>) {
@@ -127,6 +142,7 @@ export function AdminDashboard() {
     setNotice("");
 
     if (!supabase) return;
+    setAddingMenu(true);
     const formData = new FormData(event.currentTarget);
     const availableQuantity = String(formData.get("available_quantity") ?? "").trim();
 
@@ -141,25 +157,31 @@ export function AdminDashboard() {
 
     if (insertError) {
       setError(insertError.message);
+      setAddingMenu(false);
       return;
     }
 
     event.currentTarget.reset();
     setNotice("Menu item added.");
     await loadAdminData();
+    setAddingMenu(false);
   }
 
   async function toggleMenuItem(item: DailyMenuItem) {
     if (!supabase) return;
+    setTogglingMenuId(item.id);
+    setError("");
     const { error: updateError } = await supabase
       .from("daily_menu_items")
       .update({ is_active: !item.is_active })
       .eq("id", item.id);
     if (updateError) {
       setError(updateError.message);
+      setTogglingMenuId(null);
       return;
     }
     await loadAdminData();
+    setTogglingMenuId(null);
   }
 
   function exportExcel() {
@@ -239,8 +261,8 @@ export function AdminDashboard() {
             />
           </div>
           {error ? <div className="error">{error}</div> : null}
-          <button className="button primary" type="submit">
-            Sign in
+          <button className="button primary" type="submit" disabled={signingIn}>
+            {signingIn ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </main>
@@ -258,7 +280,7 @@ export function AdminDashboard() {
           <a className="button secondary" href="/">
             Resident app
           </a>
-          <button className="icon-button" type="button" onClick={signOut} aria-label="Sign out">
+          <button className="icon-button" type="button" onClick={signOut} disabled={signingOut} aria-label="Sign out">
             <LogOut size={18} aria-hidden="true" />
           </button>
         </nav>
@@ -353,7 +375,12 @@ export function AdminDashboard() {
             <>
               <div className="mobile-orders order-list">
                 {filteredOrders.map((order) => (
-                  <OrderCard key={order.id} order={order} onUpdate={updateOrder} />
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onUpdate={updateOrder}
+                    saving={savingOrderId === order.id}
+                  />
                 ))}
               </div>
               <div className="table-wrap">
@@ -388,10 +415,18 @@ export function AdminDashboard() {
                           <StatusBadge value={order.status} />
                         </td>
                         <td>
-                          <PaymentControls order={order} onUpdate={updateOrder} />
+                          <PaymentControls
+                            order={order}
+                            onUpdate={updateOrder}
+                            saving={savingOrderId === order.id}
+                          />
                         </td>
                         <td>
-                          <StatusControls order={order} onUpdate={updateOrder} />
+                          <StatusControls
+                            order={order}
+                            onUpdate={updateOrder}
+                            saving={savingOrderId === order.id}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -427,9 +462,9 @@ export function AdminDashboard() {
                 <input id="availableQuantity" name="available_quantity" type="number" min="1" step="1" />
               </div>
             </div>
-            <button className="button primary" type="submit">
+            <button className="button primary" type="submit" disabled={addingMenu}>
               <Plus size={18} aria-hidden="true" />
-              Add item
+              {addingMenu ? "Adding..." : "Add item"}
             </button>
           </form>
 
@@ -454,8 +489,13 @@ export function AdminDashboard() {
                         {item.available_quantity ?? "Unlimited"} quantity · {item.is_active ? "Active" : "Hidden"}
                       </p>
                     </div>
-                    <button className="button secondary" type="button" onClick={() => toggleMenuItem(item)}>
-                      {item.is_active ? "Hide" : "Show"}
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() => toggleMenuItem(item)}
+                      disabled={togglingMenuId === item.id}
+                    >
+                      {togglingMenuId === item.id ? "Saving..." : item.is_active ? "Hide" : "Show"}
                     </button>
                   </article>
                 ))}
@@ -471,12 +511,14 @@ export function AdminDashboard() {
 function OrderCard({
   order,
   onUpdate,
+  saving,
 }: {
   order: GuestOrder;
   onUpdate: (
     orderId: string,
     values: Partial<Pick<GuestOrder, "status" | "payment_status" | "payment_mode" | "admin_note">>,
   ) => Promise<void>;
+  saving: boolean;
 }) {
   return (
     <article className="card order-card">
@@ -496,8 +538,8 @@ function OrderCard({
         ))}
       </div>
       <strong>{formatMoney(order.total_amount)}</strong>
-      <PaymentControls order={order} onUpdate={onUpdate} />
-      <StatusControls order={order} onUpdate={onUpdate} />
+      <PaymentControls order={order} onUpdate={onUpdate} saving={saving} />
+      <StatusControls order={order} onUpdate={onUpdate} saving={saving} />
     </article>
   );
 }
@@ -509,9 +551,11 @@ function StatusBadge({ value }: { value: OrderStatus | PaymentStatus }) {
 function StatusControls({
   order,
   onUpdate,
+  saving,
 }: {
   order: GuestOrder;
   onUpdate: (orderId: string, values: Partial<Pick<GuestOrder, "status">>) => Promise<void>;
+  saving: boolean;
 }) {
   return (
     <div className="order-actions" aria-label={`Status actions for ${order.employee_name}`}>
@@ -521,9 +565,9 @@ function StatusControls({
           type="button"
           key={status}
           onClick={() => onUpdate(order.id, { status })}
-          disabled={order.status === status}
+          disabled={saving || order.status === status}
         >
-          {status}
+          {saving && order.status !== status ? "Saving..." : status}
         </button>
       ))}
     </div>
@@ -533,12 +577,14 @@ function StatusControls({
 function PaymentControls({
   order,
   onUpdate,
+  saving,
 }: {
   order: GuestOrder;
   onUpdate: (
     orderId: string,
     values: Partial<Pick<GuestOrder, "payment_status" | "payment_mode">>,
   ) => Promise<void>;
+  saving: boolean;
 }) {
   return (
     <div className="form-grid">
@@ -549,6 +595,7 @@ function PaymentControls({
           <select
             id={`payment-${order.id}`}
             value={order.payment_status}
+            disabled={saving}
             onChange={(event) =>
               onUpdate(order.id, { payment_status: event.target.value as PaymentStatus })
             }
@@ -562,6 +609,7 @@ function PaymentControls({
           <select
             id={`mode-${order.id}`}
             value={order.payment_mode ?? ""}
+            disabled={saving}
             onChange={(event) => onUpdate(order.id, { payment_mode: event.target.value || null })}
           >
             <option value="">Not set</option>
