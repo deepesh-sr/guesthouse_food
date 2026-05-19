@@ -1,15 +1,20 @@
-# Brand - Guest House Food
+# Brand - NPCL Material Inventory
 
-_Status: deferred_
+_Status: active_
 
-The user chose to defer brand setup. This project is currently using a neutral operations-app palette and no custom typography. The `frontend-design-guidelines` skill will quietly use defaults and will not prompt again.
+## Identity
 
-To set up a real brand palette, typography, and voice at any time, run:
+NPCL stands for `NOIDA POWER COMPANY LIMITED`. The product should feel like a utility operations dashboard: clear, sturdy, high-contrast, and built for repeated stock checks.
 
-    /brand-design
+## Palette
 
-or say: "pick brand colors"
+- Primary: deep utility blue `#075f83`
+- Accent: grid/field green `#1f7a4d`
+- Background: light infrastructure grey `#f4f7f8`
+- Text: dark control-room navy `#102235`
+- Warning: amber for low stock
+- Danger: red for out-of-stock and destructive actions
 
-When `brand-design` runs, it will detect this deferred state, skip the "confirm overwrite" step, and proceed directly to the full brand setup. The resulting palette will be applied to `app/globals.css` and this file will be replaced with the real brand documentation.
+## Voice
 
-_Deferred at: 2026-05-17T07:10:00Z_
+Use concise operational copy. Prefer material, stock, location, and status language over marketing language.

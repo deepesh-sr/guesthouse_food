@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Guest House Food",
-  description: "Mobile-first food ordering and admin records for a colony guest house.",
+  title: "NPCL Material Inventory",
+  description: "Public material stock dashboard and admin inventory records for NPCL.",
 };
 
 export default function RootLayout({

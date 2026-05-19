@@ -1,15 +1,15 @@
-# Guest House Food
+# NPCL Material Inventory
 
-Mobile-first food ordering and records app for a colony guest house.
+Mobile-friendly material stock dashboard for `NPCL : NOIDA POWER COMPANY LIMITED`.
 
 ## Features
 
-- Resident order page with employee code, name, daily menu, cart, and pending order submission.
+- Public no-login dashboard for material availability.
+- Search and filter by material, category, location, and stock status.
 - Admin dashboard with Supabase email/password login.
-- Daily menu management by date.
-- Order approval flow: `pending`, `approved`, `rejected`, `cancelled`.
-- Manual payment tracking: `paid` / `unpaid` and payment mode.
-- Excel `.xlsx` export for filtered records.
+- Add, inline edit, and delete material records.
+- Stock badges for `In stock`, `Low stock`, and `Out of stock`.
+- Excel `.xlsx` export for visible inventory records.
 
 ## Setup
 
@@ -36,6 +36,6 @@ Mobile-first food ordering and records app for a colony guest house.
    pnpm dev
    ```
 
-Resident app: `http://localhost:3000`
+Public dashboard: `http://localhost:3000`
 
 Admin dashboard: `http://localhost:3000/admin`

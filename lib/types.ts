@@ -1,42 +1,15 @@
-export type OrderStatus = "pending" | "approved" | "rejected" | "cancelled";
-export type PaymentStatus = "paid" | "unpaid";
+export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
-export type DailyMenuItem = {
+export type Material = {
   id: string;
-  menu_date: string;
   name: string;
-  description: string | null;
-  price: number;
-  available_quantity: number | null;
-  is_active: boolean;
+  category: string;
+  unit: string;
+  quantity: number;
+  minimum_stock: number;
+  location: string;
+  updated_at: string;
   created_at: string;
 };
 
-export type OrderItem = {
-  id: string;
-  order_id: string;
-  menu_item_id: string | null;
-  item_name: string;
-  unit_price: number;
-  quantity: number;
-  line_total: number;
-};
-
-export type GuestOrder = {
-  id: string;
-  employee_code: string;
-  employee_name: string;
-  order_date: string;
-  status: OrderStatus;
-  payment_status: PaymentStatus;
-  payment_mode: string | null;
-  total_amount: number;
-  admin_note: string | null;
-  created_at: string;
-  order_items: OrderItem[];
-};
-
-export type CartLine = {
-  item: DailyMenuItem;
-  quantity: number;
-};
+export type MaterialFormValues = Omit<Material, "id" | "created_at" | "updated_at">;

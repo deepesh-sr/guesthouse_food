@@ -1,5 +1,5 @@
-import { ResidentOrderApp } from "@/components/resident-order-app";
+import { PublicInventoryDashboard } from "@/components/public-inventory-dashboard";
 
 export default function HomePage() {
-  return <ResidentOrderApp />;
+  return <PublicInventoryDashboard />;
 }
