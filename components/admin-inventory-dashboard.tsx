@@ -61,8 +61,18 @@ export function AdminInventoryDashboard() {
       setSessionReady(true);
       return;
     }
-    const { data } = await supabase.auth.getSession();
-    setSignedIn(Boolean(data.session));
+    try {
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: { session: null } }>((resolve) =>
+          window.setTimeout(() => resolve({ data: { session: null } }), 1800),
+        ),
+      ]);
+      setSignedIn(Boolean(sessionResult.data.session));
+    } catch (sessionError) {
+      setError(sessionError instanceof Error ? sessionError.message : "Could not check admin session.");
+      setSignedIn(false);
+    }
     setSessionReady(true);
   }
 

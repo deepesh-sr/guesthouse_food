@@ -23,6 +23,7 @@
 html {
   background: var(--background);
   color: var(--foreground);
+  overflow-x: hidden;
 }
 
 body {
@@ -33,6 +34,7 @@ body {
     linear-gradient(135deg, rgba(7, 95, 131, 0.12), transparent 36%),
     linear-gradient(180deg, rgba(31, 122, 77, 0.08), transparent 420px),
     var(--background);
+  overflow-x: hidden;
 }
 
 button,
@@ -83,6 +85,7 @@ h3 {
   max-width: 1240px;
   min-height: 100vh;
   padding: 16px 14px 64px;
+  width: 100%;
 }
 
 .npcl-navbar {
@@ -96,6 +99,7 @@ h3 {
   justify-content: space-between;
   margin-bottom: 18px;
   padding: 12px;
+  min-width: 0;
 }
 
 .npcl-brand {
@@ -103,12 +107,14 @@ h3 {
   display: inline-flex;
   gap: 10px;
   min-height: 44px;
+  min-width: 0;
 }
 
 .npcl-brand strong {
   display: block;
   font-size: clamp(0.95rem, 3vw, 1.2rem);
   line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 .brand-mark {
@@ -140,6 +146,8 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .button,
@@ -191,6 +199,7 @@ select:disabled {
 .grid {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .panel,
@@ -199,6 +208,7 @@ select:disabled {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow);
+  min-width: 0;
 }
 
 .panel {
@@ -264,8 +274,10 @@ select:disabled {
 .material-card-head {
   align-items: flex-start;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .inventory-toolbar,
@@ -296,6 +308,7 @@ select:disabled {
   border-radius: 8px;
   color: var(--foreground);
   min-height: 44px;
+  min-width: 0;
   width: 100%;
 }
 
@@ -406,10 +419,13 @@ select:disabled {
 
 .table-wrap {
   display: none;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .desktop-table {
   border-collapse: collapse;
+  min-width: 840px;
   width: 100%;
 }
 
@@ -534,12 +550,7 @@ select:disabled {
 
   .inventory-toolbar {
     align-items: end;
-    grid-template-columns: minmax(220px, 1fr) 190px 170px;
-  }
-
-  .admin-grid {
-    align-items: start;
-    grid-template-columns: 340px minmax(0, 1fr);
+    grid-template-columns: minmax(180px, 1fr) minmax(150px, 190px) minmax(150px, 170px);
   }
 
   .inline-fields {
@@ -553,5 +564,32 @@ select:disabled {
   .table-wrap {
     display: block;
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 719px) {
+  .npcl-navbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .npcl-navbar .nav-actions,
+  .npcl-navbar .button {
+    width: 100%;
+  }
+
+  .hero-band {
+    padding: 18px;
+  }
+
+  .metrics-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1120px) {
+  .admin-grid {
+    align-items: start;
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
   }
 }
