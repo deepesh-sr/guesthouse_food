@@ -1,4 +1,4 @@
-import { Building2, ShieldCheck } from "lucide-react";
+import { Building2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function NpclShell({
@@ -22,14 +22,11 @@ export function NpclShell({
             <strong>NPCL : NOIDA POWER COMPANY LIMITED</strong>
           </span>
         </a>
-        <nav className="nav-actions" aria-label="Main navigation">
-          {action ?? (
-            <a className="button secondary" href="/admin">
-              <ShieldCheck size={18} aria-hidden="true" />
-              Admin
-            </a>
-          )}
-        </nav>
+        {action ? (
+          <nav className="nav-actions" aria-label="Main navigation">
+            {action}
+          </nav>
+        ) : null}
       </header>
       {children}
     </main>
