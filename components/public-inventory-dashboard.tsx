@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { InventoryFilters } from "@/components/inventory-filters";
 import { MaterialCards, MaterialTable } from "@/components/material-table";
 import { NpclShell } from "@/components/npcl-shell";
-import { filterMaterials, getStockStatus } from "@/lib/materials";
+import { filterMaterials, getStockStatus, isMissingMaterialsTableError, seedMaterials } from "@/lib/materials";
 import { isSupabaseConfigured, publicSupabase } from "@/lib/supabase";
 import type { Material, StockStatus } from "@/lib/types";
 
@@ -16,6 +16,7 @@ export function PublicInventoryDashboard() {
   const [stock, setStock] = useState<"all" | StockStatus>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [setupNotice, setSetupNotice] = useState("");
 
   const filteredMaterials = useMemo(
     () => filterMaterials(materials, { query, category, stock }),
@@ -28,6 +29,7 @@ export function PublicInventoryDashboard() {
   async function loadMaterials() {
     setLoading(true);
     setError("");
+    setSetupNotice("");
 
     if (!isSupabaseConfigured || !publicSupabase) {
       setLoading(false);
@@ -42,7 +44,14 @@ export function PublicInventoryDashboard() {
       .order("name", { ascending: true });
 
     if (materialsError) {
-      setError(materialsError.message);
+      if (isMissingMaterialsTableError(materialsError.message)) {
+        setMaterials(seedMaterials);
+        setSetupNotice(
+          "Showing sample seed data. Run supabase/schema.sql once in Supabase to create the live materials table.",
+        );
+      } else {
+        setError(materialsError.message);
+      }
     } else {
       setMaterials(data ?? []);
     }
@@ -90,6 +99,13 @@ export function PublicInventoryDashboard() {
           onCategoryChange={setCategory}
           onStockChange={setStock}
         />
+
+        {setupNotice ? (
+          <div className="notice">
+            <strong>Database setup pending.</strong>
+            <span>{setupNotice}</span>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="error">

@@ -12,7 +12,9 @@ import {
   formatNumber,
   getStockStatus,
   getStockStatusLabel,
+  isMissingMaterialsTableError,
   materialCategories,
+  seedMaterials,
 } from "@/lib/materials";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Material, MaterialFormValues, StockStatus } from "@/lib/types";
@@ -47,6 +49,7 @@ export function AdminInventoryDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [setupNotice, setSetupNotice] = useState("");
 
   const filteredMaterials = useMemo(
     () => filterMaterials(materials, { query, category, stock }),
@@ -67,6 +70,7 @@ export function AdminInventoryDashboard() {
     if (!supabase || !signedIn) return;
     setLoading(true);
     setError("");
+    setSetupNotice("");
     const { data, error: materialsError } = await supabase
       .from("materials")
       .select("*")
@@ -74,7 +78,14 @@ export function AdminInventoryDashboard() {
       .order("name", { ascending: true });
 
     if (materialsError) {
-      setError(materialsError.message);
+      if (isMissingMaterialsTableError(materialsError.message)) {
+        setMaterials(seedMaterials);
+        setSetupNotice(
+          "Showing sample seed data. Admin edits will work after running supabase/schema.sql in Supabase.",
+        );
+      } else {
+        setError(materialsError.message);
+      }
     } else {
       setMaterials(data ?? []);
     }
@@ -330,6 +341,12 @@ export function AdminInventoryDashboard() {
             <div className="error">
               <strong>Inventory action failed.</strong>
               <span>{error}</span>
+            </div>
+          ) : null}
+          {setupNotice ? (
+            <div className="notice">
+              <strong>Database setup pending.</strong>
+              <span>{setupNotice}</span>
             </div>
           ) : null}
           {notice ? <div className="success">{notice}</div> : null}
