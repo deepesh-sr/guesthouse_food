@@ -2,16 +2,15 @@
 
 import { Download, LogOut, Pencil, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { InventoryFilters } from "@/components/inventory-filters";
 import { StockBadge } from "@/components/material-table";
 import { NpclShell } from "@/components/npcl-shell";
 import { formatDateTime } from "@/lib/date";
+import { downloadMaterialsExcel } from "@/lib/export-materials";
 import {
   filterMaterials,
   formatNumber,
   getStockStatus,
-  getStockStatusLabel,
   isMissingMaterialsTableError,
   materialCategories,
   seedMaterials,
@@ -209,26 +208,6 @@ export function AdminInventoryDashboard() {
     setDeletingId(null);
   }
 
-  function exportExcel() {
-    const rows = filteredMaterials.map((material) => {
-      const status = getStockStatus(material);
-      return {
-        "Material name": material.name,
-        Category: material.category,
-        Unit: material.unit,
-        Quantity: material.quantity,
-        "Minimum stock": material.minimum_stock,
-        Location: material.location,
-        Status: getStockStatusLabel(status),
-        "Last updated": formatDateTime(material.updated_at),
-      };
-    });
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "NPCL Materials");
-    XLSX.writeFile(workbook, "npcl-material-inventory.xlsx");
-  }
-
   if (!sessionReady) {
     return (
       <NpclShell action={null}>
@@ -241,7 +220,7 @@ export function AdminInventoryDashboard() {
     return (
       <NpclShell action={null}>
         <div className="panel grid">
-          <h1>NPCL admin dashboard</h1>
+          <h1>HPCL admin dashboard</h1>
           <div className="error">
             <strong>Supabase is not configured.</strong>
             <span>Add values to .env.local and restart the app.</span>
@@ -331,9 +310,14 @@ export function AdminInventoryDashboard() {
               <button className="icon-button" type="button" onClick={loadMaterials} disabled={loading} aria-label="Refresh materials">
                 <RefreshCw size={18} aria-hidden="true" />
               </button>
-              <button className="button primary" type="button" onClick={exportExcel} disabled={filteredMaterials.length === 0}>
+              <button
+                className="button primary"
+                type="button"
+                onClick={() => downloadMaterialsExcel(filteredMaterials)}
+                disabled={filteredMaterials.length === 0}
+              >
                 <Download size={18} aria-hidden="true" />
-                Export Excel
+                DOWNLOAD EXCEL
               </button>
             </div>
           </div>

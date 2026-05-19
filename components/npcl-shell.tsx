@@ -1,4 +1,3 @@
-import { Building2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function NpclShell({
@@ -15,11 +14,11 @@ export function NpclShell({
       <header className="npcl-navbar">
         <a className="npcl-brand" href="/">
           <span className="brand-mark" aria-hidden="true">
-            <Building2 size={24} />
+            <img src="/hpcl-logo.svg" alt="" />
           </span>
           <span>
             <span className="eyebrow">{eyebrow}</span>
-            <strong>NPCL : NOIDA POWER COMPANY LIMITED</strong>
+            <strong>HPCL : HINDUSTAN PETROLEUM CORPORATION LIMITED</strong>
           </span>
         </a>
         {action ? (

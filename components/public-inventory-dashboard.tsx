@@ -1,10 +1,11 @@
 "use client";
 
-import { RefreshCw, Zap } from "lucide-react";
+import { Download, RefreshCw, ShieldCheck, Zap } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { InventoryFilters } from "@/components/inventory-filters";
 import { MaterialCards, MaterialTable } from "@/components/material-table";
 import { NpclShell } from "@/components/npcl-shell";
+import { downloadMaterialsExcel } from "@/lib/export-materials";
 import { filterMaterials, getStockStatus, isMissingMaterialsTableError, seedMaterials } from "@/lib/materials";
 import { isSupabaseConfigured, publicSupabase } from "@/lib/supabase";
 import type { Material, StockStatus } from "@/lib/types";
@@ -64,19 +65,34 @@ export function PublicInventoryDashboard() {
   }, []);
 
   return (
-    <NpclShell>
+    <NpclShell
+      action={
+        <a className="button secondary" href="/npcl/admin">
+          <ShieldCheck size={18} aria-hidden="true" />
+          Admin login
+        </a>
+      }
+    >
       <section className="hero-band" aria-labelledby="dashboard-heading">
         <div className="hero-copy">
           <p className="eyebrow">Public material availability</p>
-          <h1 id="dashboard-heading">NPCL material stock dashboard</h1>
+          <h1 id="dashboard-heading">HPCL material stock dashboard</h1>
           <p className="muted">
             Track essential utility materials such as fasteners, cable accessories, and distribution spares.
           </p>
         </div>
         <div className="metrics-strip" aria-label="Inventory summary">
-          <Metric label="Materials" value={materials.length} />
-          <Metric label="Low stock" value={lowStockCount} tone={lowStockCount > 0 ? "warning" : "success"} />
-          <Metric label="Out" value={outOfStockCount} tone={outOfStockCount > 0 ? "danger" : "success"} />
+          <Metric label="Total Available Material" value={materials.length} />
+          <Metric
+            label="Low in Stock Material"
+            value={lowStockCount}
+            tone={lowStockCount > 0 ? "warning" : "success"}
+          />
+          <Metric
+            label="Out of Stock Material"
+            value={outOfStockCount}
+            tone={outOfStockCount > 0 ? "danger" : "success"}
+          />
         </div>
       </section>
 
@@ -86,9 +102,20 @@ export function PublicInventoryDashboard() {
             <p className="eyebrow">Inventory ledger</p>
             <h2 id="materials-heading">Material table</h2>
           </div>
-          <button className="icon-button" type="button" onClick={loadMaterials} disabled={loading} aria-label="Refresh materials">
-            <RefreshCw size={18} aria-hidden="true" />
-          </button>
+          <div className="nav-actions">
+            <button className="icon-button" type="button" onClick={loadMaterials} disabled={loading} aria-label="Refresh materials">
+              <RefreshCw size={18} aria-hidden="true" />
+            </button>
+            <button
+              className="button primary"
+              type="button"
+              onClick={() => downloadMaterialsExcel(filteredMaterials)}
+              disabled={filteredMaterials.length === 0}
+            >
+              <Download size={18} aria-hidden="true" />
+              DOWNLOAD EXCEL
+            </button>
+          </div>
         </div>
 
         <InventoryFilters
@@ -122,7 +149,7 @@ export function PublicInventoryDashboard() {
           <div className="empty-state">
             <Zap size={28} aria-hidden="true" />
             <h3>No materials match these filters</h3>
-            <p className="muted">Clear search or filters to view the current NPCL inventory list.</p>
+            <p className="muted">Clear search or filters to view the current HPCL inventory list.</p>
           </div>
         ) : (
           <>

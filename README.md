@@ -1,6 +1,6 @@
-# NPCL Material Inventory
+# HPCL Material Inventory
 
-Mobile-friendly material stock dashboard for `NPCL : NOIDA POWER COMPANY LIMITED`.
+Mobile-friendly material stock dashboard for `HPCL : HINDUSTAN PETROLEUM CORPORATION LIMITED`.
 
 ## Features
 
@@ -38,4 +38,4 @@ Mobile-friendly material stock dashboard for `NPCL : NOIDA POWER COMPANY LIMITED
 
 Public dashboard: `http://localhost:3000`
 
-Admin dashboard: `http://localhost:3000/admin`
+Admin dashboard: `http://localhost:3000/npcl/admin`

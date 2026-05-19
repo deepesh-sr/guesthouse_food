@@ -1,19 +1,19 @@
 :root {
-  --background: #f4f7f8;
-  --foreground: #102235;
-  --muted: #5c6975;
-  --muted-2: #dbe5e8;
+  --background: #f4f7fb;
+  --foreground: #10233f;
+  --muted: #5e6c80;
+  --muted-2: #d9e3ef;
   --surface: #ffffff;
-  --surface-strong: #eaf1f3;
-  --border: #cad7dc;
-  --primary: #075f83;
+  --surface-strong: #eef4fb;
+  --border: #c7d6e8;
+  --primary: #0057a8;
   --primary-foreground: #ffffff;
-  --accent: #1f7a4d;
-  --danger: #ad3434;
-  --warning: #946100;
-  --success: #1d6d46;
-  --ring: #0a789e;
-  --shadow: 0 18px 48px rgba(16, 34, 53, 0.1);
+  --accent: #d71920;
+  --danger: #b71c28;
+  --warning: #945c00;
+  --success: #075f83;
+  --ring: #0057a8;
+  --shadow: 0 18px 48px rgba(16, 35, 63, 0.1);
 }
 
 * {
@@ -31,8 +31,8 @@ body {
   min-height: 100vh;
   font-size: 15px;
   background:
-    linear-gradient(135deg, rgba(7, 95, 131, 0.12), transparent 36%),
-    linear-gradient(180deg, rgba(31, 122, 77, 0.08), transparent 420px),
+    linear-gradient(135deg, rgba(0, 87, 168, 0.13), transparent 36%),
+    linear-gradient(180deg, rgba(215, 25, 32, 0.07), transparent 430px),
     var(--background);
   overflow-x: hidden;
 }
@@ -85,7 +85,7 @@ h3 {
 
 .app-shell {
   margin: 0 auto;
-  max-width: 1240px;
+  max-width: none;
   min-height: 100vh;
   padding: 16px 14px 64px;
   width: 100%;
@@ -123,13 +123,22 @@ h3 {
 
 .brand-mark {
   align-items: center;
-  background: var(--primary);
+  background: var(--surface);
   border-radius: 8px;
+  border: 1px solid rgba(0, 87, 168, 0.16);
   color: var(--primary-foreground);
   display: inline-flex;
-  height: 44px;
+  height: 48px;
   justify-content: center;
-  width: 44px;
+  padding: 5px;
+  width: 48px;
+}
+
+.brand-mark img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
 }
 
 .eyebrow {
@@ -189,7 +198,7 @@ h3 {
 
 .button.danger {
   background: #fff4f2;
-  border-color: #e9bab5;
+  border-color: #efb5b8;
   color: var(--danger);
 }
 
@@ -227,7 +236,7 @@ select:disabled {
 .hero-band {
   align-items: end;
   background:
-    linear-gradient(120deg, rgba(7, 95, 131, 0.95), rgba(31, 122, 77, 0.88)),
+    linear-gradient(120deg, rgba(0, 87, 168, 0.96), rgba(215, 25, 32, 0.86)),
     var(--primary);
   border-radius: 8px;
   color: var(--primary-foreground);
@@ -276,8 +285,9 @@ select:disabled {
 
 .metric span {
   color: rgba(255, 255, 255, 0.82);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 500;
+  line-height: 1.25;
 }
 
 .section-heading,
@@ -361,7 +371,7 @@ select:disabled {
 }
 
 .status.in_stock {
-  background: #e7f5ee;
+  background: #e8f2ff;
   color: var(--success);
 }
 
@@ -371,7 +381,7 @@ select:disabled {
 }
 
 .status.out_of_stock {
-  background: #fff0ee;
+  background: #fff0f1;
   color: var(--danger);
 }
 
@@ -497,14 +507,14 @@ select:disabled {
 }
 
 .error {
-  background: #fff0ee;
-  border: 1px solid #e9bab5;
+  background: #fff0f1;
+  border: 1px solid #efb5b8;
   color: var(--danger);
 }
 
 .success {
-  background: #e7f5ee;
-  border: 1px solid #acd6bf;
+  background: #e8f2ff;
+  border: 1px solid #a8c8ed;
   color: var(--success);
 }
 
@@ -581,7 +591,7 @@ select:disabled {
 }
 
 .guesthouse-shell .sticky-cart {
-  background: rgba(244, 247, 248, 0.95);
+  background: rgba(244, 247, 251, 0.95);
   border-top: 1px solid var(--border);
   bottom: 0;
   display: grid;
@@ -626,7 +636,7 @@ select:disabled {
 
 @media (min-width: 720px) {
   .app-shell {
-    padding: 24px 24px 72px;
+    padding: 24px 28px 72px;
   }
 
   .npcl-navbar {
@@ -634,7 +644,7 @@ select:disabled {
   }
 
   .hero-band {
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
     padding: 30px;
   }
 
@@ -683,8 +693,22 @@ select:disabled {
 }
 
 @media (min-width: 1120px) {
+  .app-shell {
+    padding-left: 36px;
+    padding-right: 36px;
+  }
+
+  .hero-band {
+    min-height: 360px;
+    padding: 42px;
+  }
+
+  .panel {
+    padding: 22px;
+  }
+
   .admin-grid {
     align-items: start;
-    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+    grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
   }
 }

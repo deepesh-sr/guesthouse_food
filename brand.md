@@ -1,16 +1,16 @@
-# Brand - NPCL Material Inventory
+# Brand - HPCL Material Inventory
 
 _Status: active_
 
 ## Identity
 
-NPCL stands for `NOIDA POWER COMPANY LIMITED`. The product should feel like a utility operations dashboard: clear, sturdy, high-contrast, and built for repeated stock checks.
+HPCL stands for `HINDUSTAN PETROLEUM CORPORATION LIMITED`. The product should feel like a petroleum operations dashboard: clear, sturdy, high-contrast, and built for repeated stock checks.
 
 ## Palette
 
-- Primary: deep utility blue `#075f83`
-- Accent: grid/field green `#1f7a4d`
-- Background: light infrastructure grey `#f4f7f8`
+- Primary: HPCL blue `#0057a8`
+- Accent: HPCL red `#d71920`
+- Background: light operations grey `#f4f7fb`
 - Text: dark control-room navy `#102235`
 - Warning: amber for low stock
 - Danger: red for out-of-stock and destructive actions

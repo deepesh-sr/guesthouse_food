@@ -9,8 +9,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "NPCL Material Inventory",
-  description: "Public material stock dashboard and admin inventory records for NPCL.",
+  title: "HPCL Material Inventory",
+  description: "Public material stock dashboard and admin inventory records for HPCL.",
 };
 
 export default function RootLayout({
