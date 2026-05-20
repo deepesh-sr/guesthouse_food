@@ -290,6 +290,41 @@ select:disabled {
   line-height: 1.25;
 }
 
+.terminal-chip {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  color: var(--primary-foreground);
+  display: inline-flex;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  width: fit-content;
+}
+
+.terminal-gate {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.terminal-gate .field label,
+.terminal-gate .eyebrow {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.terminal-options {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.admin-terminal-band {
+  margin-bottom: 16px;
+  min-height: 0;
+}
+
 .section-heading,
 .material-card-head {
   align-items: flex-start;
@@ -476,6 +511,21 @@ select:disabled {
 .form-grid {
   display: grid;
   gap: 12px;
+}
+
+.master-controls {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 14px;
+}
+
+.inline-master-form {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .auth-panel {

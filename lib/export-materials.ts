@@ -7,8 +7,11 @@ export function downloadMaterialsExcel(materials: Material[]) {
   const rows = materials.map((material) => {
     const status = getStockStatus(material);
     return {
+      "Terminal code": material.terminal_code,
+      Terminal: material.terminal_name,
       "Material name": material.name,
       Category: material.category,
+      "Sub category": material.subcategory,
       Unit: material.unit,
       Quantity: material.quantity,
       "Minimum stock": material.minimum_stock,

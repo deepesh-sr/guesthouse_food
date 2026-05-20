@@ -1,13 +1,13 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { materialCategories } from "@/lib/materials";
 import type { StockStatus } from "@/lib/types";
 
 export function InventoryFilters({
   query,
   category,
   stock,
+  categories,
   onQueryChange,
   onCategoryChange,
   onStockChange,
@@ -15,6 +15,7 @@ export function InventoryFilters({
   query: string;
   category: string;
   stock: "all" | StockStatus;
+  categories: string[];
   onQueryChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onStockChange: (value: "all" | StockStatus) => void;
@@ -44,7 +45,7 @@ export function InventoryFilters({
           onChange={(event) => onCategoryChange(event.target.value)}
         >
           <option value="all">All categories</option>
-          {materialCategories.map((item) => (
+          {categories.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>

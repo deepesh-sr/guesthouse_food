@@ -43,10 +43,39 @@ export type CartLine = {
 
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
-export type Material = {
+export type Terminal = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+export type Category = {
   id: string;
   name: string;
+};
+
+export type Subcategory = {
+  id: string;
+  category_id: string;
+  name: string;
+};
+
+export type Unit = {
+  id: string;
+  name: string;
+};
+
+export type Material = {
+  id: string;
+  terminal_id: string;
+  terminal_code: string;
+  terminal_name: string;
+  name: string;
+  category_id: string;
   category: string;
+  subcategory_id: string;
+  subcategory: string;
+  unit_id: string;
   unit: string;
   quantity: number;
   minimum_stock: number;
@@ -55,4 +84,16 @@ export type Material = {
   created_at: string;
 };
 
-export type MaterialFormValues = Omit<Material, "id" | "created_at" | "updated_at">;
+export type MaterialFormValues = {
+  name: string;
+  category_id: string;
+  subcategory_id: string;
+  unit_id: string;
+  quantity: number;
+  minimum_stock: number;
+  location: string;
+};
+
+export type AdminTerminalAssignment = {
+  terminal: Terminal;
+};

@@ -36,6 +36,6 @@ Mobile-friendly material stock dashboard for `HPCL : HINDUSTAN PETROLEUM CORPORA
    pnpm dev
    ```
 
-Public dashboard: `http://localhost:3000`
+Employee dashboard: `http://localhost:3000`
 
-Admin dashboard: `http://localhost:3000/npcl/admin`
+Admin dashboard: `http://localhost:3000/hpcl/admin`

@@ -24,6 +24,7 @@ export function MaterialCards({ materials }: { materials: Material[] }) {
             <div>
               <p className="eyebrow">{material.category}</p>
               <h3>{material.name}</h3>
+              <p className="muted">{material.subcategory}</p>
             </div>
             <StockBadge status={getStockStatus(material)} />
           </div>
@@ -32,6 +33,10 @@ export function MaterialCards({ materials }: { materials: Material[] }) {
             <span>{material.unit}</span>
           </div>
           <dl className="material-facts">
+            <div>
+              <dt>Terminal</dt>
+              <dd>{material.terminal_code}</dd>
+            </div>
             <div>
               <dt>Minimum</dt>
               <dd>
@@ -63,7 +68,9 @@ export function MaterialTable({ materials }: { materials: Material[] }) {
         <thead>
           <tr>
             <th>Material</th>
+            <th>Terminal</th>
             <th>Category</th>
+            <th>Sub category</th>
             <th>Quantity</th>
             <th>Minimum</th>
             <th>Location</th>
@@ -77,7 +84,9 @@ export function MaterialTable({ materials }: { materials: Material[] }) {
               <td>
                 <strong>{material.name}</strong>
               </td>
+              <td>{material.terminal_code}</td>
               <td>{material.category}</td>
+              <td>{material.subcategory}</td>
               <td>
                 {formatNumber(material.quantity)} {material.unit}
               </td>

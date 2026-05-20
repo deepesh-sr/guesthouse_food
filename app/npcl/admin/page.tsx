@@ -1,5 +1,5 @@
-import { AdminInventoryDashboard } from "@/components/admin-inventory-dashboard";
+import { redirect } from "next/navigation";
 
 export default function NpclAdminPage() {
-  return <AdminInventoryDashboard />;
+  redirect("/hpcl/admin");
 }

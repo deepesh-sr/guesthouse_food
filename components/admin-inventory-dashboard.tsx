@@ -8,31 +8,35 @@ import { NpclShell } from "@/components/npcl-shell";
 import { formatDateTime } from "@/lib/date";
 import { downloadMaterialsExcel } from "@/lib/export-materials";
 import {
+  defaultMaterialFormValues,
   filterMaterials,
   formatNumber,
   getStockStatus,
+  getSeedMaterialsForTerminal,
   isMissingMaterialsTableError,
-  materialCategories,
-  seedMaterials,
+  materialSelect,
+  normalizeMaterialRow,
+  seedCategories,
+  seedSubcategories,
+  seedUnits,
+  subcategoriesForCategory,
+  terminals,
 } from "@/lib/materials";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { Material, MaterialFormValues, StockStatus } from "@/lib/types";
+import type { Category, Material, MaterialFormValues, StockStatus, Subcategory, Terminal, Unit } from "@/lib/types";
 
-const emptyForm: MaterialFormValues = {
-  name: "",
-  category: "Fasteners",
-  unit: "pcs",
-  quantity: 0,
-  minimum_stock: 0,
-  location: "",
-};
+const emptyForm = defaultMaterialFormValues();
 
 export function AdminInventoryDashboard() {
   const [sessionReady, setSessionReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [assignedTerminal, setAssignedTerminal] = useState<Terminal | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [categories, setCategories] = useState<Category[]>(seedCategories);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>(seedSubcategories);
+  const [units, setUnits] = useState<Unit[]>(seedUnits);
   const [form, setForm] = useState<MaterialFormValues>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<MaterialFormValues>(emptyForm);
@@ -49,11 +53,17 @@ export function AdminInventoryDashboard() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [setupNotice, setSetupNotice] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newSubcategory, setNewSubcategory] = useState("");
+  const [newSubcategoryCategoryId, setNewSubcategoryCategoryId] = useState(seedCategories[0]?.id ?? "");
+  const [newUnit, setNewUnit] = useState("");
 
   const filteredMaterials = useMemo(
     () => filterMaterials(materials, { query, category, stock }),
     [category, materials, query, stock],
   );
+
+  const availableCategories = useMemo(() => categories.map((item) => item.name), [categories]);
 
   async function initialize() {
     if (!supabase) {
@@ -68,6 +78,9 @@ export function AdminInventoryDashboard() {
         ),
       ]);
       setSignedIn(Boolean(sessionResult.data.session));
+      if (sessionResult.data.session) {
+        await resolveAssignedTerminal(sessionResult.data.session.user.id, sessionResult.data.session.user.email ?? "");
+      }
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : "Could not check admin session.");
       setSignedIn(false);
@@ -75,20 +88,67 @@ export function AdminInventoryDashboard() {
     setSessionReady(true);
   }
 
-  async function loadMaterials() {
+  async function resolveAssignedTerminal(userId: string, userEmail: string) {
+    if (!supabase) return;
+    const { data, error: assignmentError } = await supabase
+      .from("terminal_admins")
+      .select("terminal:terminals(*)")
+      .or(`user_id.eq.${userId},admin_email.eq.${userEmail}`)
+      .maybeSingle();
+
+    if (assignmentError) {
+      if (isMissingMaterialsTableError(assignmentError.message)) {
+        setAssignedTerminal(terminals[0]);
+        setSetupNotice("Showing sample terminal assignment. Run supabase/schema.sql and add terminal_admins rows.");
+      } else {
+        setError(assignmentError.message);
+      }
+      return;
+    }
+
+    const terminal = Array.isArray(data?.terminal) ? data?.terminal[0] : data?.terminal;
+    setAssignedTerminal((terminal as Terminal | null) ?? null);
+  }
+
+  async function loadMasters() {
     if (!supabase || !signedIn) return;
+    const [categoriesResult, subcategoriesResult, unitsResult] = await Promise.all([
+      supabase.from("categories").select("*").order("name", { ascending: true }),
+      supabase.from("subcategories").select("*").order("name", { ascending: true }),
+      supabase.from("units").select("*").order("name", { ascending: true }),
+    ]);
+
+    const firstError = categoriesResult.error ?? subcategoriesResult.error ?? unitsResult.error;
+    if (firstError) {
+      if (isMissingMaterialsTableError(firstError.message)) {
+        setCategories(seedCategories);
+        setSubcategories(seedSubcategories);
+        setUnits(seedUnits);
+      } else {
+        setError(firstError.message);
+      }
+      return;
+    }
+
+    setCategories(categoriesResult.data ?? []);
+    setSubcategories(subcategoriesResult.data ?? []);
+    setUnits(unitsResult.data ?? []);
+  }
+
+  async function loadMaterials() {
+    if (!supabase || !signedIn || !assignedTerminal) return;
     setLoading(true);
     setError("");
     setSetupNotice("");
     const { data, error: materialsError } = await supabase
       .from("materials")
-      .select("*")
-      .order("category", { ascending: true })
+      .select(materialSelect())
+      .eq("terminal_id", assignedTerminal.id)
       .order("name", { ascending: true });
 
     if (materialsError) {
       if (isMissingMaterialsTableError(materialsError.message)) {
-        setMaterials(seedMaterials);
+        setMaterials(getSeedMaterialsForTerminal(assignedTerminal.code));
         setSetupNotice(
           "Showing sample seed data. Admin edits will work after running supabase/schema.sql in Supabase.",
         );
@@ -96,7 +156,7 @@ export function AdminInventoryDashboard() {
         setError(materialsError.message);
       }
     } else {
-      setMaterials(data ?? []);
+      setMaterials((data ?? []).map(normalizeMaterialRow));
     }
     setLoading(false);
   }
@@ -106,8 +166,12 @@ export function AdminInventoryDashboard() {
   }, []);
 
   useEffect(() => {
-    void loadMaterials();
+    void loadMasters();
   }, [signedIn]);
+
+  useEffect(() => {
+    void loadMaterials();
+  }, [signedIn, assignedTerminal]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,6 +191,10 @@ export function AdminInventoryDashboard() {
       return;
     }
 
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData.user) {
+      await resolveAssignedTerminal(userData.user.id, userData.user.email ?? "");
+    }
     setSignedIn(true);
     setSigningIn(false);
   }
@@ -135,17 +203,18 @@ export function AdminInventoryDashboard() {
     setSigningOut(true);
     await supabase?.auth.signOut();
     setSignedIn(false);
+    setAssignedTerminal(null);
     setSigningOut(false);
   }
 
   async function addMaterial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supabase) return;
+    if (!supabase || !assignedTerminal) return;
     setSaving(true);
     setError("");
     setNotice("");
 
-    const { error: insertError } = await supabase.from("materials").insert(toDbPayload(form));
+    const { error: insertError } = await supabase.from("materials").insert(toDbPayload(form, assignedTerminal.id));
     if (insertError) {
       setError(insertError.message);
       setSaving(false);
@@ -163,8 +232,9 @@ export function AdminInventoryDashboard() {
     setConfirmDeleteId(null);
     setEditDraft({
       name: material.name,
-      category: material.category,
-      unit: material.unit,
+      category_id: material.category_id,
+      subcategory_id: material.subcategory_id,
+      unit_id: material.unit_id,
       quantity: material.quantity,
       minimum_stock: material.minimum_stock,
       location: material.location,
@@ -177,7 +247,7 @@ export function AdminInventoryDashboard() {
     setError("");
     const { error: updateError } = await supabase
       .from("materials")
-      .update(toDbPayload(editDraft))
+      .update(toDbPayload(editDraft, assignedTerminal?.id))
       .eq("id", materialId);
 
     if (updateError) {
@@ -208,6 +278,57 @@ export function AdminInventoryDashboard() {
     setDeletingId(null);
   }
 
+  async function addCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !newCategory.trim()) return;
+    setError("");
+    const { data, error: insertError } = await supabase
+      .from("categories")
+      .insert({ name: newCategory.trim() })
+      .select()
+      .single();
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setCategories((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewCategory("");
+  }
+
+  async function addSubcategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !newSubcategory.trim() || !newSubcategoryCategoryId) return;
+    setError("");
+    const { data, error: insertError } = await supabase
+      .from("subcategories")
+      .insert({ name: newSubcategory.trim(), category_id: newSubcategoryCategoryId })
+      .select()
+      .single();
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setSubcategories((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewSubcategory("");
+  }
+
+  async function addUnit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !newUnit.trim()) return;
+    setError("");
+    const { data, error: insertError } = await supabase
+      .from("units")
+      .insert({ name: newUnit.trim() })
+      .select()
+      .single();
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setUnits((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewUnit("");
+  }
+
   if (!sessionReady) {
     return (
       <NpclShell action={null}>
@@ -232,7 +353,7 @@ export function AdminInventoryDashboard() {
 
   if (!signedIn) {
     return (
-      <NpclShell eyebrow="Admin access" action={<a className="button secondary" href="/">Public dashboard</a>}>
+      <NpclShell eyebrow="Admin access" action={<a className="button secondary" href="/">Employee access</a>}>
         <form className="panel auth-panel form-grid" onSubmit={signIn}>
           <div>
             <p className="eyebrow">Secure inventory controls</p>
@@ -275,29 +396,83 @@ export function AdminInventoryDashboard() {
     );
   }
 
+  if (!assignedTerminal) {
+    return (
+      <NpclShell
+        eyebrow="Admin inventory"
+        action={
+          <button className="icon-button" type="button" onClick={signOut} disabled={signingOut} aria-label="Sign out">
+            <LogOut size={18} aria-hidden="true" />
+          </button>
+        }
+      >
+        <section className="panel grid">
+          <div>
+            <p className="eyebrow">Terminal assignment required</p>
+            <h1>No terminal assigned</h1>
+          </div>
+          <div className="notice">
+            Your admin account is not linked to `1979 - HPCL Vijayawada Terminal` or `1915 - HPCL Ramagundam IRD`.
+            Add a row in `terminal_admins` for this Supabase user/email.
+          </div>
+        </section>
+      </NpclShell>
+    );
+  }
+
   return (
     <NpclShell
       eyebrow="Admin inventory"
       action={
         <>
-          <a className="button secondary" href="/">Public dashboard</a>
+          <a className="button secondary" href="/">Employee access</a>
           <button className="icon-button" type="button" onClick={signOut} disabled={signingOut} aria-label="Sign out">
             <LogOut size={18} aria-hidden="true" />
           </button>
         </>
       }
     >
+      <section className="hero-band admin-terminal-band" aria-label="Assigned terminal">
+        <div className="hero-copy">
+          <p className="eyebrow">Assigned terminal</p>
+          <h1>
+            {assignedTerminal.code} - {assignedTerminal.name}
+          </h1>
+          <p className="muted">All admin edits and downloads are restricted to this terminal.</p>
+        </div>
+      </section>
       <section className="grid admin-grid">
         <form className="panel form-grid" onSubmit={addMaterial}>
           <div>
             <p className="eyebrow">Material master</p>
             <h1>Add material</h1>
           </div>
-          <MaterialFields value={form} onChange={setForm} prefix="new" />
+          <MaterialFields
+            value={form}
+            onChange={setForm}
+            prefix="new"
+            categories={categories}
+            subcategories={subcategories}
+            units={units}
+          />
           <button className="button primary" type="submit" disabled={saving} aria-busy={saving}>
             <Plus size={18} aria-hidden="true" />
             {saving ? "Adding..." : "Add material"}
           </button>
+          <MasterControls
+            categories={categories}
+            newCategory={newCategory}
+            setNewCategory={setNewCategory}
+            addCategory={addCategory}
+            newSubcategory={newSubcategory}
+            setNewSubcategory={setNewSubcategory}
+            newSubcategoryCategoryId={newSubcategoryCategoryId}
+            setNewSubcategoryCategoryId={setNewSubcategoryCategoryId}
+            addSubcategory={addSubcategory}
+            newUnit={newUnit}
+            setNewUnit={setNewUnit}
+            addUnit={addUnit}
+          />
         </form>
 
         <section className="panel grid" aria-labelledby="admin-materials-heading">
@@ -326,6 +501,7 @@ export function AdminInventoryDashboard() {
             query={query}
             category={category}
             stock={stock}
+            categories={availableCategories}
             onQueryChange={setQuery}
             onCategoryChange={setCategory}
             onStockChange={setStock}
@@ -369,6 +545,9 @@ export function AdminInventoryDashboard() {
               onRequestDelete={setConfirmDeleteId}
               onDelete={deleteMaterial}
               deletingId={deletingId}
+              categories={categories}
+              subcategories={subcategories}
+              units={units}
             />
           )}
         </section>
@@ -381,11 +560,18 @@ function MaterialFields({
   value,
   onChange,
   prefix,
+  categories,
+  subcategories,
+  units,
 }: {
   value: MaterialFormValues;
   onChange: (value: MaterialFormValues) => void;
   prefix: string;
+  categories: Category[];
+  subcategories: Subcategory[];
+  units: Unit[];
 }) {
+  const matchingSubcategories = subcategoriesForCategory(subcategories, value.category_id);
   return (
     <>
       <div className="field">
@@ -404,27 +590,50 @@ function MaterialFields({
           <label htmlFor={`${prefix}-category`}>Category</label>
           <select
             id={`${prefix}-category`}
-            value={value.category}
-            onChange={(event) => onChange({ ...value, category: event.target.value })}
+            value={value.category_id}
+            onChange={(event) => {
+              const nextCategoryId = event.target.value;
+              const firstSubcategory = subcategoriesForCategory(subcategories, nextCategoryId)[0];
+              onChange({ ...value, category_id: nextCategoryId, subcategory_id: firstSubcategory?.id ?? "" });
+            }}
           >
-            {materialCategories.map((item) => (
-              <option key={item} value={item}>
-                {item}
+            {categories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
               </option>
             ))}
           </select>
         </div>
         <div className="field">
-          <label htmlFor={`${prefix}-unit`}>Unit</label>
-          <input
-            id={`${prefix}-unit`}
-            value={value.unit}
-            onChange={(event) => onChange({ ...value, unit: event.target.value })}
-            placeholder="pcs"
-            autoComplete="off"
+          <label htmlFor={`${prefix}-subcategory`}>Sub category</label>
+          <select
+            id={`${prefix}-subcategory`}
+            value={value.subcategory_id}
+            onChange={(event) => onChange({ ...value, subcategory_id: event.target.value })}
             required
-          />
+          >
+            {matchingSubcategories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
         </div>
+      </div>
+      <div className="field">
+        <label htmlFor={`${prefix}-unit`}>Unit</label>
+        <select
+          id={`${prefix}-unit`}
+          value={value.unit_id}
+          onChange={(event) => onChange({ ...value, unit_id: event.target.value })}
+          required
+        >
+          {units.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="inline-fields">
         <div className="field">
@@ -467,6 +676,102 @@ function MaterialFields({
   );
 }
 
+function MasterControls({
+  categories,
+  newCategory,
+  setNewCategory,
+  addCategory,
+  newSubcategory,
+  setNewSubcategory,
+  newSubcategoryCategoryId,
+  setNewSubcategoryCategoryId,
+  addSubcategory,
+  newUnit,
+  setNewUnit,
+  addUnit,
+}: {
+  categories: Category[];
+  newCategory: string;
+  setNewCategory: (value: string) => void;
+  addCategory: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  newSubcategory: string;
+  setNewSubcategory: (value: string) => void;
+  newSubcategoryCategoryId: string;
+  setNewSubcategoryCategoryId: (value: string) => void;
+  addSubcategory: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  newUnit: string;
+  setNewUnit: (value: string) => void;
+  addUnit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  return (
+    <div className="master-controls">
+      <div>
+        <p className="eyebrow">Option masters</p>
+        <h2>Add options</h2>
+      </div>
+      <form className="inline-master-form" onSubmit={addCategory}>
+        <div className="field">
+          <label htmlFor="new-category">New category</label>
+          <input
+            id="new-category"
+            value={newCategory}
+            onChange={(event) => setNewCategory(event.target.value)}
+            placeholder="Valves"
+            autoComplete="off"
+          />
+        </div>
+        <button className="button secondary" type="submit">
+          Add
+        </button>
+      </form>
+      <form className="inline-master-form" onSubmit={addSubcategory}>
+        <div className="field">
+          <label htmlFor="new-subcategory-category">Category</label>
+          <select
+            id="new-subcategory-category"
+            value={newSubcategoryCategoryId}
+            onChange={(event) => setNewSubcategoryCategoryId(event.target.value)}
+          >
+            {categories.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="new-subcategory">New sub category</label>
+          <input
+            id="new-subcategory"
+            value={newSubcategory}
+            onChange={(event) => setNewSubcategory(event.target.value)}
+            placeholder="Gaskets"
+            autoComplete="off"
+          />
+        </div>
+        <button className="button secondary" type="submit">
+          Add
+        </button>
+      </form>
+      <form className="inline-master-form" onSubmit={addUnit}>
+        <div className="field">
+          <label htmlFor="new-unit">New unit</label>
+          <input
+            id="new-unit"
+            value={newUnit}
+            onChange={(event) => setNewUnit(event.target.value)}
+            placeholder="kg"
+            autoComplete="off"
+          />
+        </div>
+        <button className="button secondary" type="submit">
+          Add
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function AdminMaterialList({
   materials,
   editingId,
@@ -480,6 +785,9 @@ function AdminMaterialList({
   onRequestDelete,
   onDelete,
   deletingId,
+  categories,
+  subcategories,
+  units,
 }: {
   materials: Material[];
   editingId: string | null;
@@ -493,6 +801,9 @@ function AdminMaterialList({
   onRequestDelete: (materialId: string | null) => void;
   onDelete: (materialId: string) => Promise<void>;
   deletingId: string | null;
+  categories: Category[];
+  subcategories: Subcategory[];
+  units: Unit[];
 }) {
   return (
     <>
@@ -503,7 +814,14 @@ function AdminMaterialList({
             <article className="card material-card" key={material.id}>
               {editing ? (
                 <>
-                  <MaterialFields value={editDraft} onChange={onEditDraftChange} prefix={`mobile-edit-${material.id}`} />
+                  <MaterialFields
+                    value={editDraft}
+                    onChange={onEditDraftChange}
+                    prefix={`mobile-edit-${material.id}`}
+                    categories={categories}
+                    subcategories={subcategories}
+                    units={units}
+                  />
                   <div className="order-actions">
                     <button
                       className="button primary"
@@ -526,6 +844,7 @@ function AdminMaterialList({
                     <div>
                       <p className="eyebrow">{material.category}</p>
                       <h3>{material.name}</h3>
+                      <p className="muted">{material.subcategory}</p>
                     </div>
                     <StockBadge status={getStockStatus(material)} />
                   </div>
@@ -543,6 +862,10 @@ function AdminMaterialList({
                     <div>
                       <dt>Location</dt>
                       <dd>{material.location}</dd>
+                    </div>
+                    <div>
+                      <dt>Terminal</dt>
+                      <dd>{material.terminal_code}</dd>
                     </div>
                     <div>
                       <dt>Updated</dt>
@@ -586,7 +909,9 @@ function AdminMaterialList({
           <thead>
             <tr>
               <th>Material</th>
+              <th>Terminal</th>
               <th>Category</th>
+              <th>Sub category</th>
               <th>Quantity</th>
               <th>Minimum</th>
               <th>Location</th>
@@ -601,9 +926,16 @@ function AdminMaterialList({
                 <tr key={material.id}>
                   {editing ? (
                     <>
-                      <td colSpan={6}>
+                      <td colSpan={8}>
                         <div className="inline-edit-grid">
-                          <MaterialFields value={editDraft} onChange={onEditDraftChange} prefix={`edit-${material.id}`} />
+                          <MaterialFields
+                            value={editDraft}
+                            onChange={onEditDraftChange}
+                            prefix={`edit-${material.id}`}
+                            categories={categories}
+                            subcategories={subcategories}
+                            units={units}
+                          />
                         </div>
                       </td>
                       <td>
@@ -630,7 +962,9 @@ function AdminMaterialList({
                         <strong>{material.name}</strong>
                         <p className="muted">Updated {formatDateTime(material.updated_at)}</p>
                       </td>
+                      <td>{material.terminal_code}</td>
                       <td>{material.category}</td>
+                      <td>{material.subcategory}</td>
                       <td>
                         {formatNumber(material.quantity)} {material.unit}
                       </td>
@@ -686,11 +1020,13 @@ function toNonNegativeNumber(value: string) {
   return Number.isFinite(next) ? Math.max(0, next) : 0;
 }
 
-function toDbPayload(values: MaterialFormValues) {
+function toDbPayload(values: MaterialFormValues, terminalId?: string) {
   return {
+    ...(terminalId ? { terminal_id: terminalId } : {}),
     name: values.name.trim(),
-    category: values.category,
-    unit: values.unit.trim(),
+    category_id: values.category_id,
+    subcategory_id: values.subcategory_id,
+    unit_id: values.unit_id,
     quantity: values.quantity,
     minimum_stock: values.minimum_stock,
     location: values.location.trim(),
