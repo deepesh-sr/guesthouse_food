@@ -219,6 +219,39 @@ alter table public.materials alter column unit_id set not null;
 alter table public.materials drop constraint if exists materials_name_key;
 create unique index if not exists materials_terminal_name_idx on public.materials(terminal_id, name);
 
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'materials'
+      and column_name = 'category'
+  ) then
+    alter table public.materials alter column category drop not null;
+    update public.materials
+    set category = c.name
+    from public.categories c
+    where public.materials.category_id = c.id
+      and public.materials.category is null;
+  end if;
+
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'materials'
+      and column_name = 'unit'
+  ) then
+    alter table public.materials alter column unit drop not null;
+    update public.materials
+    set unit = u.name
+    from public.units u
+    where public.materials.unit_id = u.id
+      and public.materials.unit is null;
+  end if;
+end $$;
+
 create index if not exists daily_menu_items_menu_date_idx on public.daily_menu_items(menu_date);
 create index if not exists orders_order_date_idx on public.orders(order_date);
 create index if not exists orders_employee_code_idx on public.orders(employee_code);
