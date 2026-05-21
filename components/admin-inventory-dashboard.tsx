@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { InventoryFilters } from "@/components/inventory-filters";
 import { StockBadge } from "@/components/material-table";
 import { NpclShell } from "@/components/npcl-shell";
+import { loginIdToEmail, testCredentials } from "@/lib/auth";
 import { formatDateTime } from "@/lib/date";
 import { downloadMaterialsExcel } from "@/lib/export-materials";
 import {
@@ -30,7 +31,7 @@ const emptyForm = defaultMaterialFormValues();
 export function AdminInventoryDashboard() {
   const [sessionReady, setSessionReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
-  const [email, setEmail] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [assignedTerminal, setAssignedTerminal] = useState<Terminal | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -184,7 +185,10 @@ export function AdminInventoryDashboard() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: loginIdToEmail(loginId),
+      password,
+    });
     if (signInError) {
       setError(signInError.message);
       setSigningIn(false);
@@ -360,14 +364,14 @@ export function AdminInventoryDashboard() {
             <h1>Admin sign in</h1>
           </div>
           <div className="field">
-            <label htmlFor="adminEmail">Email</label>
+            <label htmlFor="adminEmail">Admin ID</label>
             <input
               id="adminEmail"
-              type="email"
-              autoComplete="email"
+              autoComplete="username"
               spellCheck={false}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
+              placeholder="admin1"
               required
             />
           </div>
@@ -379,6 +383,7 @@ export function AdminInventoryDashboard() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              placeholder="admin1234"
               required
             />
           </div>
@@ -391,6 +396,12 @@ export function AdminInventoryDashboard() {
           <button className="button primary" type="submit" disabled={signingIn} aria-busy={signingIn}>
             {signingIn ? "Signing in..." : "Sign in"}
           </button>
+          <div className="notice credential-hint">
+            {testCredentials
+              .filter((item) => item.role === "Admin")
+              .map((item) => `${item.loginId} / ${item.password} (${item.access})`)
+              .join(" | ")}
+          </div>
         </form>
       </NpclShell>
     );

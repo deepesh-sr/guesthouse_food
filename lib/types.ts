@@ -97,3 +97,12 @@ export type MaterialFormValues = {
 export type AdminTerminalAssignment = {
   terminal: Terminal;
 };
+
+export type UserProfile = {
+  id: string;
+  user_id: string | null;
+  login_id: string;
+  email: string | null;
+  role: "admin" | "employee";
+  display_name: string;
+};

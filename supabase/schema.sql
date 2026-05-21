@@ -84,6 +84,28 @@ create table if not exists public.terminal_admins (
   check (user_id is not null or admin_email is not null)
 );
 
+create table if not exists public.user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid unique,
+  login_id text not null unique,
+  email text unique,
+  role text not null check (role in ('admin', 'employee')),
+  display_name text not null,
+  created_at timestamptz not null default now(),
+  check (user_id is not null or email is not null)
+);
+
+create table if not exists public.employee_terminal_access (
+  id uuid primary key default gen_random_uuid(),
+  terminal_id uuid not null references public.terminals(id) on delete cascade,
+  user_id uuid,
+  employee_email text,
+  created_at timestamptz not null default now(),
+  check (user_id is not null or employee_email is not null),
+  unique (terminal_id, employee_email),
+  unique (terminal_id, user_id)
+);
+
 create table if not exists public.materials (
   id uuid primary key default gen_random_uuid(),
   terminal_id uuid references public.terminals(id) on delete cascade,
@@ -209,6 +231,10 @@ create index if not exists materials_location_idx on public.materials(location);
 create index if not exists materials_quantity_idx on public.materials(quantity);
 create index if not exists terminal_admins_user_id_idx on public.terminal_admins(user_id);
 create index if not exists terminal_admins_admin_email_idx on public.terminal_admins(lower(admin_email));
+create index if not exists user_profiles_user_id_idx on public.user_profiles(user_id);
+create index if not exists user_profiles_email_idx on public.user_profiles(lower(email));
+create index if not exists employee_terminal_access_user_id_idx on public.employee_terminal_access(user_id);
+create index if not exists employee_terminal_access_email_idx on public.employee_terminal_access(lower(employee_email));
 
 alter table public.daily_menu_items enable row level security;
 alter table public.orders enable row level security;
@@ -218,6 +244,8 @@ alter table public.categories enable row level security;
 alter table public.subcategories enable row level security;
 alter table public.units enable row level security;
 alter table public.terminal_admins enable row level security;
+alter table public.user_profiles enable row level security;
+alter table public.employee_terminal_access enable row level security;
 alter table public.materials enable row level security;
 
 grant select on public.daily_menu_items to anon, authenticated;
@@ -226,11 +254,15 @@ grant insert on public.orders to anon, authenticated;
 grant select, update on public.orders to authenticated;
 grant insert on public.order_items to anon, authenticated;
 grant select on public.order_items to authenticated;
-grant select on public.terminals to anon, authenticated;
+revoke select on public.terminals from anon;
+revoke select on public.materials from anon;
+grant select on public.terminals to authenticated;
 grant select, insert on public.categories to authenticated;
 grant select, insert on public.subcategories to authenticated;
 grant select, insert on public.units to authenticated;
 grant select on public.terminal_admins to authenticated;
+grant select on public.user_profiles to authenticated;
+grant select on public.employee_terminal_access to authenticated;
 grant select, insert, update, delete on public.materials to authenticated;
 
 drop policy if exists "Anyone can read active menu" on public.daily_menu_items;
@@ -243,6 +275,7 @@ drop policy if exists "Admins can read order items" on public.order_items;
 drop policy if exists "Anyone can read materials" on public.materials;
 drop policy if exists "Admins can manage materials" on public.materials;
 drop policy if exists "Anyone can read terminals" on public.terminals;
+drop policy if exists "Assigned users can read terminals" on public.terminals;
 drop policy if exists "Admins can read option masters" on public.categories;
 drop policy if exists "Admins can add categories" on public.categories;
 drop policy if exists "Admins can read subcategories" on public.subcategories;
@@ -250,7 +283,10 @@ drop policy if exists "Admins can add subcategories" on public.subcategories;
 drop policy if exists "Admins can read units" on public.units;
 drop policy if exists "Admins can add units" on public.units;
 drop policy if exists "Admins can read own terminal assignment" on public.terminal_admins;
+drop policy if exists "Users can read own profile" on public.user_profiles;
+drop policy if exists "Employees can read own terminal access" on public.employee_terminal_access;
 drop policy if exists "Admins can read assigned terminal materials" on public.materials;
+drop policy if exists "Employees can read assigned terminal materials" on public.materials;
 drop policy if exists "Admins can insert assigned terminal materials" on public.materials;
 drop policy if exists "Admins can update assigned terminal materials" on public.materials;
 drop policy if exists "Admins can delete assigned terminal materials" on public.materials;
@@ -299,11 +335,24 @@ create policy "Admins can read order items"
   to authenticated
   using (true);
 
-create policy "Anyone can read terminals"
+create policy "Assigned users can read terminals"
   on public.terminals
   for select
-  to anon, authenticated
-  using (true);
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.employee_terminal_access eta
+      where eta.terminal_id = terminals.id
+        and (eta.user_id = auth.uid() or lower(eta.employee_email) = lower(auth.jwt() ->> 'email'))
+    )
+    or exists (
+      select 1
+      from public.terminal_admins ta
+      where ta.terminal_id = terminals.id
+        and (ta.user_id = auth.uid() or lower(ta.admin_email) = lower(auth.jwt() ->> 'email'))
+    )
+  );
 
 create policy "Admins can read option masters"
   on public.categories
@@ -347,6 +396,18 @@ create policy "Admins can read own terminal assignment"
   to authenticated
   using (user_id = auth.uid() or lower(admin_email) = lower(auth.jwt() ->> 'email'));
 
+create policy "Users can read own profile"
+  on public.user_profiles
+  for select
+  to authenticated
+  using (user_id = auth.uid() or lower(email) = lower(auth.jwt() ->> 'email'));
+
+create policy "Employees can read own terminal access"
+  on public.employee_terminal_access
+  for select
+  to authenticated
+  using (user_id = auth.uid() or lower(employee_email) = lower(auth.jwt() ->> 'email'));
+
 create policy "Admins can read assigned terminal materials"
   on public.materials
   for select
@@ -357,6 +418,19 @@ create policy "Admins can read assigned terminal materials"
       from public.terminal_admins ta
       where ta.terminal_id = materials.terminal_id
         and (ta.user_id = auth.uid() or lower(ta.admin_email) = lower(auth.jwt() ->> 'email'))
+    )
+  );
+
+create policy "Employees can read assigned terminal materials"
+  on public.materials
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1
+      from public.employee_terminal_access eta
+      where eta.terminal_id = materials.terminal_id
+        and (eta.user_id = auth.uid() or lower(eta.employee_email) = lower(auth.jwt() ->> 'email'))
     )
   );
 
@@ -407,57 +481,7 @@ create policy "Admins can delete assigned terminal materials"
     )
   );
 
-create or replace function public.get_terminal_materials(input_terminal_code text)
-returns table (
-  id uuid,
-  terminal_id uuid,
-  terminal_code text,
-  terminal_name text,
-  name text,
-  category_id uuid,
-  category text,
-  subcategory_id uuid,
-  subcategory text,
-  unit_id uuid,
-  unit text,
-  quantity integer,
-  minimum_stock integer,
-  location text,
-  updated_at timestamptz,
-  created_at timestamptz
-)
-language sql
-security definer
-set search_path = public
-as $$
-  select
-    m.id,
-    m.terminal_id,
-    t.code as terminal_code,
-    t.name as terminal_name,
-    m.name,
-    m.category_id,
-    c.name as category,
-    m.subcategory_id,
-    s.name as subcategory,
-    m.unit_id,
-    u.name as unit,
-    m.quantity,
-    m.minimum_stock,
-    m.location,
-    m.updated_at,
-    m.created_at
-  from public.materials m
-  join public.terminals t on t.id = m.terminal_id
-  join public.categories c on c.id = m.category_id
-  join public.subcategories s on s.id = m.subcategory_id
-  join public.units u on u.id = m.unit_id
-  where t.code = trim(input_terminal_code)
-  order by c.name, m.name;
-$$;
-
-revoke all on function public.get_terminal_materials(text) from public;
-grant execute on function public.get_terminal_materials(text) to anon, authenticated;
+drop function if exists public.get_terminal_materials(text);
 
 insert into public.materials (terminal_id, name, category_id, subcategory_id, unit_id, quantity, minimum_stock, location)
 values
@@ -471,9 +495,27 @@ values
   ('11111111-1111-4111-8111-111111111915', 'Junction Box 4 Way', '22222222-2222-4222-8222-000000000005', '33333333-3333-4333-8333-000000000005', '44444444-4444-4444-8444-000000000001', 14, 10, 'Ramagundam Panel Store')
 on conflict (terminal_id, name) do nothing;
 
--- Replace these emails with the actual Supabase Auth admin emails after creating users.
+insert into public.user_profiles (login_id, email, role, display_name)
+values
+  ('admin1', 'admin1@hpcl.test', 'admin', 'Admin 1 - Vijayawada'),
+  ('admin2', 'admin2@hpcl.test', 'admin', 'Admin 2 - Ramagundam'),
+  ('employee1', 'employee1@hpcl.test', 'employee', 'Employee 1'),
+  ('employee2', 'employee2@hpcl.test', 'employee', 'Employee 2')
+on conflict (login_id) do update
+set email = excluded.email,
+    role = excluded.role,
+    display_name = excluded.display_name;
+
 insert into public.terminal_admins (terminal_id, admin_email)
 values
-  ('11111111-1111-4111-8111-111111111979', 'vijayawada.admin@example.com'),
-  ('11111111-1111-4111-8111-111111111915', 'ramagundam.admin@example.com')
+  ('11111111-1111-4111-8111-111111111979', 'admin1@hpcl.test'),
+  ('11111111-1111-4111-8111-111111111915', 'admin2@hpcl.test')
 on conflict (admin_email) do update set terminal_id = excluded.terminal_id;
+
+insert into public.employee_terminal_access (terminal_id, employee_email)
+values
+  ('11111111-1111-4111-8111-111111111979', 'employee1@hpcl.test'),
+  ('11111111-1111-4111-8111-111111111915', 'employee1@hpcl.test'),
+  ('11111111-1111-4111-8111-111111111979', 'employee2@hpcl.test'),
+  ('11111111-1111-4111-8111-111111111915', 'employee2@hpcl.test')
+on conflict (terminal_id, employee_email) do nothing;
